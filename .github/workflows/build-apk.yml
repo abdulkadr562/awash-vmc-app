@@ -16,11 +16,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Build App & Android Shell
+      - name: Build App & Generate Icon
         run: |
           mkdir app && cd app
           
-          # Initialize package manifest with stable dependencies
+          # Initialize package manifest with capacitor assets plugin
           cat << 'EOF' > package.json
           {
             "name": "awash7-market",
@@ -28,14 +28,15 @@ jobs:
             "dependencies": {
               "@capacitor/core": "6.0.0",
               "@capacitor/android": "6.0.0",
-              "@capacitor/cli": "6.0.0"
+              "@capacitor/cli": "6.0.0",
+              "@capacitor/assets": "^3.0.5"
             }
           }
           EOF
           
           npm install
 
-          # Create placeholder web directory
+          # Create web directory
           mkdir www
           echo "<html><body style='margin:0;background:#000;'><h2 style='color:#fff;text-align:center;margin-top:40vh;'>Loading Awash7 Market...</h2></body></html>" > www/index.html
 
@@ -52,8 +53,20 @@ jobs:
           }
           EOF
 
+          # Check if icon.png exists in root directory and copy it into assets folder
+          if [ -f ../icon.png ]; then
+            mkdir -p assets
+            cp ../icon.png assets/icon.png
+          fi
+
           # Build native Android project shell
           npx cap add android
+
+          # Automatically generate launcher icons from icon.png if it exists
+          if [ -f assets/icon.png ]; then
+            npx cap-assets generate --android
+          fi
+
           npx cap sync android
 
           # Grant full permissions to Gradle build binary
