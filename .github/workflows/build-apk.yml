@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Java JDK 17
         uses: actions/setup-java@v5
@@ -30,23 +30,19 @@ jobs:
               "@capacitor/core": "^6.0.0",
               "@capacitor/cli": "^6.0.0",
               "@capacitor/android": "^6.0.0"
-            },
-            "devDependencies": {
-              "@capacitor/assets": "^3.0.5"
             }
           }
           EOF
           npm install
 
-      - name: Initialize App & Setup Icons
+      - name: Initialize App & Setup Config
         run: |
           cd app
-          # Initialize app with name Awash7 Market
           npx cap init "Awash7 Market" "com.awash7market.app" --web-dir "www"
           mkdir www
-          echo "<h1>Loading...</h1>" > www/index.html
+          echo "<html><body style='margin:0;background:#000;'><h2 style='color:#fff;text-align:center;margin-top:40vh;'>Loading Awash7 Market...</h2></body></html>" > www/index.html
           
-          # Create Capacitor config targeting your website URL
+          # Create Capacitor config targeting site URL
           cat << 'EOF' > capacitor.config.json
           {
             "appId": "com.awash7market.app",
@@ -59,28 +55,22 @@ jobs:
           }
           EOF
 
-          # Add Android platform shell
+          # Add native platform shell and sync configurations
           npx cap add android
-
-          # Check and generate icons if icon.png exists in root directory
-          if [ -f ../icon.png ]; then
-            mkdir -p assets
-            cp ../icon.png assets/icon.png
-            npx cap-assets generate --android || echo "Assets generator skipped or handled natively"
-          fi
+          npx cap sync android
 
       - name: Build Debug APK & Sign Release AAB for Play Store
         run: |
           cd app/android
           chmod +x gradlew
           
-          # Build APK for direct phone testing
+          # Build testing APK
           ./gradlew assembleDebug
           
-          # Build Release Bundle for Google Play Store
+          # Build Play Store Release Bundle
           ./gradlew bundleRelease
           
-          # Generate signing key & sign AAB file
+          # Generate keystore & sign AAB
           keytool -genkeypair -v -keystore release.keystore -alias awashkey -keyalg RSA -keysize 2048 -validity 10000 -storepass awashpass -keypass awashpass -dname "CN=Awash7Market, OU=App, O=Awash7Market, L=Awash, C=ET"
           jarsigner -keystore release.keystore -storepass awashpass -keypass awashpass app/build/outputs/bundle/release/app-release-unsigned.aab awashkey
           mv app/build/outputs/bundle/release/app-release-unsigned.aab app/build/outputs/bundle/release/Awash7Market-signed.aab
