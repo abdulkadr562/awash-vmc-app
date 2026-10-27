@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android App (APK & Signed AAB)
 
 on:
   workflow_dispatch:
@@ -19,34 +19,36 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Download & Extract Capacitor CLI
+      - name: Download & Install Dependencies
         run: |
           mkdir app && cd app
           cat << 'EOF' > package.json
           {
-            "name": "awash-7-kilo-vmc",
+            "name": "awash7-market",
             "version": "1.0.0",
             "dependencies": {
               "@capacitor/core": "^6.0.0",
               "@capacitor/cli": "^6.0.0",
-              "@capacitor/android": "^6.0.0"
+              "@capacitor/android": "^6.0.0",
+              "@capacitor/assets": "^3.0.0"
             }
           }
           EOF
           npm install
 
-      - name: Initialize App Project & Set Server URL
+      - name: Initialize App & Generate Launcher Icons
         run: |
           cd app
-          npx cap init "Awash 7 Kilo VMC" "com.awash7kilovmc.app" --web-dir "www"
+          # Initialize app with new display name "Awash7 Market"
+          npx cap init "Awash7 Market" "com.awash7market.app" --web-dir "www"
           mkdir www
           echo "<h1>Loading...</h1>" > www/index.html
           
-          # Inject direct server URL configuration into capacitor.config.json
+          # Create Capacitor configuration targeting your website
           cat << 'EOF' > capacitor.config.json
           {
-            "appId": "com.awash7kilovmc.app",
-            "appName": "Awash 7 Kilo VMC",
+            "appId": "com.awash7market.app",
+            "appName": "Awash7 Market",
             "webDir": "www",
             "server": {
               "url": "https://awash7kilovmc.base44.app",
@@ -54,17 +56,40 @@ jobs:
             }
           }
           EOF
+
+          # Copy icon if available in repo root
+          if [ -f ../icon.png ]; then
+            mkdir -p assets
+            cp ../icon.png assets/icon.png
+          fi
           
           npx cap add android
+          
+          # Auto-generate Android launcher icons
+          if [ -f assets/icon.png ]; then
+            npx cap-assets generate --android
+          fi
 
-      - name: Build Debug APK
+      - name: Build Debug APK & Sign Release AAB for Play Store
         run: |
           cd app/android
           chmod +x gradlew
+          
+          # Build APK for direct installation
           ./gradlew assembleDebug
+          
+          # Build Release Bundle
+          ./gradlew bundleRelease
+          
+          # Generate signing key & sign AAB for Google Play Store upload
+          keytool -genkeypair -v -keystore release.keystore -alias awashkey -keyalg RSA -keysize 2048 -validity 10000 -storepass awashpass -keypass awashpass -dname "CN=Awash7Market, OU=App, O=Awash7Market, L=Awash, C=ET"
+          jarsigner -keystore release.keystore -storepass awashpass -keypass awashpass app/build/outputs/bundle/release/app-release-unsigned.aab awashkey
+          mv app/build/outputs/bundle/release/app-release-unsigned.aab app/build/outputs/bundle/release/Awash7Market-signed.aab
 
-      - name: Upload APK Artifact
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Awash7KiloVMC-App
-          path: app/android/app/build/outputs/apk/debug/app-debug.apk
+          name: Awash7Market-App-Files
+          path: |
+            app/android/app/build/outputs/apk/debug/app-debug.apk
+            app/android/app/build/outputs/bundle/release/Awash7Market-signed.aab
