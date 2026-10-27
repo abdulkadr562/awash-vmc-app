@@ -6,14 +6,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx2048m -XX:MaxMetaspaceSize=512m'"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Set up Java JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -21,7 +19,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Build Android App Project
+      - name: Install Capacitor CLI
+        run: npm install -g @capacitor/cli
+
+      - name: Initialize & Build Android App Project
         run: |
           mkdir app && cd app
           
@@ -32,7 +33,6 @@ jobs:
             "version": "1.0.0",
             "dependencies": {
               "@capacitor/core": "^6.0.0",
-              "@capacitor/cli": "^6.0.0",
               "@capacitor/android": "^6.0.0"
             }
           }
@@ -40,12 +40,11 @@ jobs:
           
           npm install
 
-          # Initialize Capacitor with app name "Awash7 Market"
-          npx cap init "Awash7 Market" "com.awash7market.app" --web-dir "www"
+          # Create placeholder web directory
           mkdir www
           echo "<html><body style='margin:0;background:#000;'><h2 style='color:#fff;text-align:center;margin-top:40vh;'>Loading Awash7 Market...</h2></body></html>" > www/index.html
 
-          # Configure site URL
+          # Create Capacitor config targeting your website URL
           cat << 'EOF' > capacitor.config.json
           {
             "appId": "com.awash7market.app",
@@ -58,21 +57,21 @@ jobs:
           }
           EOF
 
-          # Generate native Android project shell and sync settings
+          # Add native Android shell and sync configuration
           npx cap add android
           npx cap sync android
 
-          # Grant executable permissions to Gradle wrapper script
+          # Grant executable permissions to Gradle
           cd android
           chmod +x gradlew
           
-          # Build Debug APK for testing
+          # Build APK for testing
           ./gradlew assembleDebug
           
           # Build Release Bundle for Google Play Store
           ./gradlew bundleRelease
           
-          # Generate release keystore & sign AAB file
+          # Generate signing key & sign release AAB file
           keytool -genkeypair -v -keystore release.keystore -alias awashkey -keyalg RSA -keysize 2048 -validity 10000 -storepass awashpass -keypass awashpass -dname "CN=Awash7Market, OU=App, O=Awash7Market, L=Awash, C=ET"
           jarsigner -keystore release.keystore -storepass awashpass -keypass awashpass app/build/outputs/bundle/release/app-release-unsigned.aab awashkey
           mv app/build/outputs/bundle/release/app-release-unsigned.aab app/build/outputs/bundle/release/Awash7Market-signed.aab
