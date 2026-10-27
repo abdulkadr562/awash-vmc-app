@@ -1,0 +1,70 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Download & Extract Capacitor CLI
+        run: |
+          mkdir app && cd app
+          cat << 'EOF' > package.json
+          {
+            "name": "awash-7-kilo-vmc",
+            "version": "1.0.0",
+            "dependencies": {
+              "@capacitor/core": "^5.0.0",
+              "@capacitor/cli": "^5.0.0",
+              "@capacitor/android": "^5.0.0"
+            }
+          }
+          EOF
+          npm install
+
+      - name: Initialize App Project
+        run: |
+          cd app
+          npx cap init "Awash 7 Kilo VMC" "com.awash7kilovmc.app" --web-dir "www"
+          mkdir www
+          cat << 'EOF' > www/index.html
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body, html { margin:0; padding:0; height:100%; overflow:hidden; }
+              iframe { width:100%; height:100%; border:none; }
+            </style>
+          </head>
+          <body>
+            <iframe src="https://awash7kilovmc.base44.app"></iframe>
+          </body>
+          </html>
+          EOF
+          npx cap add android
+
+      - name: Build Debug APK
+        run: |
+          cd app/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Awash7KiloVMC-App
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
