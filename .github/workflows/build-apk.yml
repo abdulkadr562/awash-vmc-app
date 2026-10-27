@@ -11,17 +11,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
 
-      - name: Create Base Project Directory
+      - name: Build Android App Project
         run: |
           mkdir app && cd app
+          
+          # Initialize package manifest
           cat << 'EOF' > package.json
           {
             "name": "awash7-market",
@@ -33,16 +35,15 @@ jobs:
             }
           }
           EOF
+          
           npm install
 
-      - name: Initialize App & Setup Config
-        run: |
-          cd app
+          # Initialize Capacitor with app name "Awash7 Market"
           npx cap init "Awash7 Market" "com.awash7market.app" --web-dir "www"
           mkdir www
           echo "<html><body style='margin:0;background:#000;'><h2 style='color:#fff;text-align:center;margin-top:40vh;'>Loading Awash7 Market...</h2></body></html>" > www/index.html
-          
-          # Inject direct server URL configuration into capacitor.config.json
+
+          # Configure site URL
           cat << 'EOF' > capacitor.config.json
           {
             "appId": "com.awash7market.app",
@@ -55,22 +56,22 @@ jobs:
           }
           EOF
 
-          # Add native platform shell and sync web build into Android app shell
+          # Generate native Android project shell and sync settings
           npx cap add android
           npx cap sync android
 
-      - name: Build Debug APK & Sign Release AAB for Play Store
-        run: |
-          cd app/android
+          # Make Gradle executable inside the app/android directory
+          cd android
           chmod +x gradlew
+          chmod +x gradle/wrapper/gradle-wrapper.jar || true
           
-          # Build testing APK
+          # Build APK for testing
           ./gradlew assembleDebug
           
-          # Build Play Store Release Bundle
+          # Build Release Bundle for Google Play Store
           ./gradlew bundleRelease
           
-          # Generate keystore & sign AAB
+          # Sign Release AAB File
           keytool -genkeypair -v -keystore release.keystore -alias awashkey -keyalg RSA -keysize 2048 -validity 10000 -storepass awashpass -keypass awashpass -dname "CN=Awash7Market, OU=App, O=Awash7Market, L=Awash, C=ET"
           jarsigner -keystore release.keystore -storepass awashpass -keypass awashpass app/build/outputs/bundle/release/app-release-unsigned.aab awashkey
           mv app/build/outputs/bundle/release/app-release-unsigned.aab app/build/outputs/bundle/release/Awash7Market-signed.aab
