@@ -58,11 +58,11 @@ jobs:
           
           npx cap add android
 
-          # Automatically copy icon.png and generate custom launcher icons
+          # Automatically copy icon.png and generate custom launcher icons using the correct syntax
           if [ -f ../icon.png ]; then
             mkdir -p assets
             cp ../icon.png assets/icon.png
-            npx cap-assets generate --android
+            npx @capacitor/assets generate --android
           fi
 
       - name: Build Debug APK
