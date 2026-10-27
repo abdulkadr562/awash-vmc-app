@@ -35,26 +35,26 @@ jobs:
           EOF
           npm install
 
-      - name: Initialize App Project
+      - name: Initialize App Project & Set Server URL
         run: |
           cd app
           npx cap init "Awash 7 Kilo VMC" "com.awash7kilovmc.app" --web-dir "www"
           mkdir www
-          cat << 'EOF' > www/index.html
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>
-              body, html { margin:0; padding:0; height:100%; width:100%; overflow:hidden; }
-              iframe { width:100%; height:100%; border:none; }
-            </style>
-          </head>
-          <body>
-            <iframe src="https://awash7kilovmc.base44.app"></iframe>
-          </body>
-          </html>
+          echo "<h1>Loading...</h1>" > www/index.html
+          
+          # Inject direct server URL configuration into capacitor.config.json
+          cat << 'EOF' > capacitor.config.json
+          {
+            "appId": "com.awash7kilovmc.app",
+            "appName": "Awash 7 Kilo VMC",
+            "webDir": "www",
+            "server": {
+              "url": "https://awash7kilovmc.base44.app",
+              "cleartext": true
+            }
+          }
           EOF
+          
           npx cap add android
 
       - name: Build Debug APK
