@@ -1,4 +1,4 @@
-name: Build Android App (APK & Signed AAB)
+name: Build Android APK
 
 on:
   workflow_dispatch:
@@ -16,35 +16,38 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Build App & Generate Icon
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Download & Extract Capacitor CLI
         run: |
           mkdir app && cd app
-          
-          # Initialize package manifest with capacitor assets plugin
           cat << 'EOF' > package.json
           {
-            "name": "awash7-market",
+            "name": "awash-7-kilo-vmc",
             "version": "1.0.0",
             "dependencies": {
-              "@capacitor/core": "6.0.0",
-              "@capacitor/android": "6.0.0",
-              "@capacitor/cli": "6.0.0",
-              "@capacitor/assets": "^3.0.5"
+              "@capacitor/core": "^6.0.0",
+              "@capacitor/cli": "^6.0.0",
+              "@capacitor/android": "^6.0.0",
+              "@capacitor/assets": "^3.0.0"
             }
           }
           EOF
-          
           npm install
 
-          # Create web directory
+      - name: Initialize App Project, Set Icon & Server URL
+        run: |
+          cd app
+          npx cap init "Awash 7 Kilo VMC" "com.awash7kilovmc.app" --web-dir "www"
           mkdir www
-          echo "<html><body style='margin:0;background:#000;'><h2 style='color:#fff;text-align:center;margin-top:40vh;'>Loading Awash7 Market...</h2></body></html>" > www/index.html
-
-          # Configure Capacitor settings with your website URL
+          echo "<h1>Loading...</h1>" > www/index.html
+          
+          # Inject direct server URL configuration into capacitor.config.json
           cat << 'EOF' > capacitor.config.json
           {
-            "appId": "com.awash7market.app",
-            "appName": "Awash7 Market",
+            "appId": "com.awash7kilovmc.app",
+            "appName": "Awash 7 Kilo VMC",
             "webDir": "www",
             "server": {
               "url": "https://awash7kilovmc.base44.app",
@@ -52,42 +55,24 @@ jobs:
             }
           }
           EOF
+          
+          npx cap add android
 
-          # Check if icon.png exists in root directory and copy it into assets folder
+          # Automatically copy icon.png and generate custom launcher icons
           if [ -f ../icon.png ]; then
             mkdir -p assets
             cp ../icon.png assets/icon.png
-          fi
-
-          # Build native Android project shell
-          npx cap add android
-
-          # Automatically generate launcher icons from icon.png if it exists
-          if [ -f assets/icon.png ]; then
             npx cap-assets generate --android
           fi
 
-          npx cap sync android
+      - name: Build Debug APK
+        run: |
+          cd app/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-          # Grant full permissions to Gradle build binary
-          chmod -R +x android/
-
-          # Build testing APK
-          cd android
-          ./gradlew assembleDebug --no-daemon
-
-          # Build Play Store Release Bundle
-          ./gradlew bundleRelease --no-daemon
-
-          # Sign release bundle for Google Play Console
-          keytool -genkeypair -v -keystore release.keystore -alias awashkey -keyalg RSA -keysize 2048 -validity 10000 -storepass awashpass -keypass awashpass -dname "CN=Awash7Market, OU=App, O=Awash7Market, L=Awash, C=ET"
-          jarsigner -keystore release.keystore -storepass awashpass -keypass awashpass app/build/outputs/bundle/release/app-release-unsigned.aab awashkey
-          mv app/build/outputs/bundle/release/app-release-unsigned.aab app/build/outputs/bundle/release/Awash7Market-signed.aab
-
-      - name: Upload Build Artifacts
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Awash7Market-App-Files
-          path: |
-            app/android/app/build/outputs/apk/debug/app-debug.apk
-            app/android/app/build/outputs/bundle/release/Awash7Market-signed.aab
+          name: Awash7KiloVMC-App
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
