@@ -16,14 +16,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK Tools
-        uses: android-actions/setup-android@v3
-
       - name: Build App & Android Shell
         run: |
           mkdir app && cd app
           
-          # Initialize package manifest
+          # Initialize package manifest with stable dependencies
           cat << 'EOF' > package.json
           {
             "name": "awash7-market",
@@ -38,7 +35,7 @@ jobs:
           
           npm install
 
-          # Create basic web assets folder
+          # Create placeholder web directory
           mkdir www
           echo "<html><body style='margin:0;background:#000;'><h2 style='color:#fff;text-align:center;margin-top:40vh;'>Loading Awash7 Market...</h2></body></html>" > www/index.html
 
@@ -55,7 +52,7 @@ jobs:
           }
           EOF
 
-          # Build native project shell
+          # Build native Android project shell
           npx cap add android
           npx cap sync android
 
