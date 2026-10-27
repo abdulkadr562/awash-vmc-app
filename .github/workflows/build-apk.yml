@@ -16,19 +16,14 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK
+      - name: Setup Android SDK Tools
         uses: android-actions/setup-android@v3
-
-      - name: Setup Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
       - name: Build App & Android Shell
         run: |
           mkdir app && cd app
           
-          # Initialize package manifest with stable dependencies
+          # Initialize package manifest
           cat << 'EOF' > package.json
           {
             "name": "awash7-market",
